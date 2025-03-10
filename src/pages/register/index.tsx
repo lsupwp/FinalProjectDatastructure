@@ -1,6 +1,7 @@
 'use client'
 import axios from "axios"
 import { useState } from "react"
+import Link from "next/link"
 
 const Register = ()=>{
     const [username, setUsername] = useState<string>('')
@@ -63,7 +64,7 @@ const Register = ()=>{
                     <button className="border-2 px-5 py-2" onClick={register}>Sign-in</button>
                 </div>
                 <div className="w-full flex items-center justify-center mb-5">
-                    <p>You have an account?</p><a className="ml-2 text-blue-600 dark:text-blue-400" href="/login">Click Here</a>
+                    <p>You have an account?</p><Link className="ml-2 text-blue-600 dark:text-blue-400" href="/login">Click Here</Link>
                 </div>
             </div>
         </div>
