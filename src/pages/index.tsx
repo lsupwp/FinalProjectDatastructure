@@ -1,24 +1,10 @@
 import { useEffect } from "react";
-import axios from "axios";
+import { checkAuth } from "@/utils/checkAuth";
+import Link from "next/link";
 
 export default function Home() {
     useEffect(() => {
-        const token = localStorage.getItem("token");
-
-        axios.post("/api/auth/authen", {}, {
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-            }
-        }).then(res => {
-            if(res.data.status == "Error"){
-                localStorage.removeItem("token");
-                window.location.href = "/login";
-                return;
-            }
-        }).catch(err => {
-            console.log(err);
-        });
+        checkAuth()
     }, []);
 
     const logout = ()=>{
@@ -27,8 +13,10 @@ export default function Home() {
     }
 
     return (
-        <div>
-            <button onClick={logout}>Logout</button>
+        <div className="@container flex flex-col items-center justify-start h-screen w-full">
+            <h1 className="text-3xl my-5">Hello My DSA Project</h1>
+            <button onClick={logout} className="border-2 px-5 bg-green-500 text-black hover:bg-green-700 cursor-pointer mb-5">Logout</button>
+            <Link href={`/login-dashbord`} className="text-3xl text-blue-500">Login Dashbord</Link>
         </div>
     )
 }

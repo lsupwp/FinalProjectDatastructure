@@ -17,20 +17,22 @@ const LoginDashboard = () => {
 
     useEffect(() => {
         const authenticateUser = async () => {
-            const res = await checkAuth();
-            if (res && res.id) {
-                try {
+            try {
+                const res = await checkAuth();
+                if (res && res.id) {
                     const response = await axios.post("/api/auth/loginDashbord", { id: res.id });
+                    // console.log(response)
                     // ดึงข้อมูลจาก API แล้วเก็บไว้ในตัวแปร data ที่เป็น Array
                     const fetchedData: DashboardData[] = response.data?.data || [];
                     setData(fetchedData);
-                } catch (err) {
-                    console.error("Error fetching dashboard data:", err);
                 }
+            } catch (err) {
+                console.error("Error fetching dashboard data:", err);
             }
         };
         authenticateUser();
     }, []);
+
 
     return (
         <div className="@container flex flex-col items-center justify-start h-screen w-full">

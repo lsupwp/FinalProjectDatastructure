@@ -10,7 +10,10 @@ const authen = (req:NextApiRequest, res:NextApiResponse)=>{
 
             const decoded = jwt.verify(token, process.env.JWT_SECRET as string)
             if(!decoded) {errorMessage(res, "Unauthorized!"); return}
-            res.json({status: "Success", message: "Authorized!"})
+            const email = (decoded as { email: string }).email;
+            const id = (decoded as { id: string }).id;
+            console.log(decoded)
+            res.json({status: "Success", message: "Authorized!", email:email,  id: id})
         }catch(err){
             console.log(err)
             errorMessage(res, "Unauthorized!");

@@ -21,7 +21,7 @@ export const checkAuth = async () => {
             window.location.href = "/login";
             return
         }
-        console.log(res.data);
+        // console.log(res.data);
         return res.data;
     } catch (error) {
         console.log("Auth Error:", error);

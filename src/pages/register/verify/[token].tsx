@@ -7,6 +7,7 @@ export default function VerifyEmail() {
 
     const [isVerify, setIsVerify] = useState<boolean>(false)
 
+
     axios.get(`/api/auth/verify?token=${router.query.token}`)
     .then(res=>{
         console.log(res.data)

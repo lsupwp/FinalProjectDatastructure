@@ -9,7 +9,7 @@ const verify = (req:NextApiRequest, res:NextApiResponse) => {
         jwt.verify(String(token), process.env.JWT_SECRET as string, (err, decoded)=>{
             if(err) return res.json({status: "Error", message: "Invalid token!"})
             const email = (decoded as { email: string }).email;
-            db.query("UPDATE users SET is_verify = 1 WHERE email = ?", [email], (err, result)=>{
+            db.query("UPDATE users SET isVerify = 1 WHERE email = ?", [email], (err, result)=>{
                 if(err) return res.json({status: "Error", message: "Internal Server Error! (MYSQL)"})
                 if(!result) return res.json({status: "Error", message: "Internal Server Error! (MYSQL)"})
                     res.json({status: "Success", decoded:decoded})
