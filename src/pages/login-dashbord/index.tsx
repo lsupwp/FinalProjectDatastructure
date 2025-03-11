@@ -38,6 +38,7 @@ const LoginDashboard = () => {
         <div className="@container flex flex-col items-center justify-start h-screen w-full">
             <h1 className="text-3xl my-5"><Link href="/">Login Dashboard</Link></h1>
             {data.length > 0 ? (
+                // Loop แสดงผลข้อมูลใน Array ออกมาทีละตัว
                 data.map((element) => (
                     <div key={element.id} className="flex flex-col w-full">
                         <Link href={`/login-wrong/${element.id}`} className="flex flex-row justify-center items-center border-b-2 w-full">

@@ -20,6 +20,7 @@ const validatePassword = (password: string) => {
     let LowerCase:number = 0
     let Number:number = 0
     let SpecialChar:number = 0
+    // ใช้ Linear search ในการตรวจสอบรหัสผ่านของผู้ใช้ว่าตรงตามเกณที่กำหนดหรือไม่
     for(let i = 0; i < password.length; i++){
         if(password[i].match(/[A-Z]/)) UperCase++
         if(password[i].match(/[a-z]/)) LowerCase++

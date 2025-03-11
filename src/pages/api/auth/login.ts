@@ -55,11 +55,13 @@ const login = async (req: NextApiRequest, res: NextApiResponse) => {
                 bcrypt.compare(password, user.password, async (err, isLogin) => {
                     // ถ้าเกิด error ให้ส่ง error กลับไป
                     if (err) { errorMessage(res, "Internal Server Error! (Bcrypt)"); return }
-                    // ถ้า password ไม่ตรงกับที่เราใส่มาให้ส่ง error กลับไป
+                    // ถ้า password ไม่ตรงกับที่เราใส่มา
                     if (!isLogin) {
                         try {
+                            // ทำการดึงข้อมูลที่อยู่จาก IP โดยใช้ fetch ในการดึงข้อมูลจากเว็ปอื่นๆเข้ามา
                             const response = await fetch(`http://ip-api.com/json/${ip_1}`);
                             const data = await response.json();
+                            // สร้างตัวแปรที่ใช้เก็บค่าข้อมูลที่เราต้องการส่งเข้าไปไว้ใน database
                             const d = {
                                 country: data.country || 'Unknown',
                                 city: data.city || 'Unknown',
@@ -72,11 +74,14 @@ const login = async (req: NextApiRequest, res: NextApiResponse) => {
                                 platform: systemInfo || 'Unknown',
                                 user_id: user.id
                             }
+                            // ทำการบันทึำข้อมูลลงใน database
                             db.query("INSERT INTO login_address (country, city, zip, lat, lon, timezone, isp, ip, platform, user_id) VALUES (?,?,?,?,?,?,?,?,?,?)", [
                                 d.country, d.city, d.zip, d.lat, d.lon, d.timezone, d.isp, d.ip, d.platform, d.user_id
                             ], (err, result) => {
+                                // ถ้าเกิด error ให้ส่ง error กลับไป
                                 if (err) { errorMessage(res, "Internal Server Error! (MYSQL)"); return }
                                 if (!result) { errorMessage(res, "Internal Server Error! (MYSQL)"); return }
+                                // ทำการส่ง error ออกไปเพราะว่าลงชื่อเข้าใช้ไม่สำเร็จ
                                 errorMessage(res, "Invalid email or password!");
                             })
                         } catch (error) {

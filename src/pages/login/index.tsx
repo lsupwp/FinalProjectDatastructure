@@ -55,6 +55,9 @@ const Login = ()=>{
                 <div className="w-full flex items-center justify-center mb-5">
                     <p>You  not have an account?</p><Link className="ml-2 text-blue-600 dark:text-blue-400" href="/register">Click Here</Link>
                 </div>
+                <div className="w-full flex items-center justify-center mb-5">
+                    <p>You  not verify your account?</p><Link className="ml-2 text-blue-600 dark:text-blue-400" href="/get-token">Click Here</Link>
+                </div>
             </div>
         </div>
     )
