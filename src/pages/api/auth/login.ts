@@ -1,105 +1,155 @@
-import { NextApiRequest, NextApiResponse } from "next";
-import { errorMessage } from "../../../../module/auth";
-import bcrypt from "bcrypt";
-import db from "../../../../module/db";
-import jwt from "jsonwebtoken";
+import { NextApiRequest, NextApiResponse } from "next"; // นำเข้าประเภทของคำขอและคำตอบจาก Next.js
+import { errorMessage } from "../../../../module/auth"; // นำเข้า function สำหรับส่ง error message
+import bcrypt from "bcrypt"; // นำเข้า bcrypt สำหรับการตรวจสอบ password
+import db from "../../../../module/db"; // นำเข้า db สำหรับเชื่อมต่อฐานข้อมูล
+import jwt from "jsonwebtoken"; // นำเข้า jsonwebtoken สำหรับการสร้าง token
+import { RowDataPacket } from "mysql2"; // นำเข้า RowDataPacket จาก mysql2 สำหรับการจัดการผลลัพธ์จากฐานข้อมูล
 
-// ดึงข้อมูล ip จาก public api
-// const getPublicIP = async () => {
-//     const response = await fetch('https://api64.ipify.org?format=json');
-//     const data = await response.json();
-//     return data.ip;
-// };
-
-// ดึงข้อมูลระบบจาก userAgent
+// ฟังก์ชันสำหรับดึงข้อมูลจาก user-agent เพื่อหาข้อมูลระบบ (เช่น OS และเบราว์เซอร์)
 const getSystemInfoFromUserAgent = (userAgent: string): string | null => {
-    const regex = /\(([^)]+)\)/;
-    const match = userAgent.match(regex);
-
+    const regex = /\(([^)]+)\)/; // ใช้ Regular Expression เพื่อหาข้อมูลที่อยู่ในวงเล็บ
+    const match = userAgent.match(regex); // ใช้ match เพื่อดึงข้อมูลที่ตรงกับ pattern
     if (match) {
+        // ถ้ามีข้อมูลใน user-agent ให้แยกข้อมูลที่ต้องการและคืนค่า
         return match[1].split(';').slice(0, 2).join(';').trim();
     } else {
+        // ถ้าไม่พบข้อมูลให้คืนค่า null
         return null;
     }
 };
 
+// ฟังก์ชันสำหรับจัดการกระบวนการ login
 const login = async (req: NextApiRequest, res: NextApiResponse) => {
-    if (req.method == "POST") {
-        // get ค่า ip และ userAgent จาก request header
+    if (req.method === "POST") { // ตรวจสอบว่าการร้องขอเป็น POST method หรือไม่
+        // ดึงค่า user-agent จาก header ของ request
         const userAgent = req.headers['user-agent'];
+        // ดึงข้อมูลระบบจาก user-agent
         const systemInfo = userAgent ? getSystemInfoFromUserAgent(userAgent) : null;
-        // const ip = await getPublicIP();
+        // ดึง IP address จาก header หรือจาก socket
         const ip_1 = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
-        // console.log(ip_1)
-        // const response = await fetch(`http://ip-api.com/json/${ip_1}`);
-        // const data = await response.json();
-        // console.log(data)
-        // ถ้าไม่มี ip ให้ส่ง error กลับไป
-        if (!ip_1) { errorMessage(res, 'IP Address not found'); return }
-        // ดึงค่า email และ password จาก body
-        const { email, password } = req.body
-        // ถ้าไม่มี email หรือ password ให้ส่ง error กลับไป
-        if (!email) { errorMessage(res, "Plase Enter your email!"); return }
-        if (!password) { errorMessage(res, "Plase Enter your password!"); return }
-        // ดึงข้อมูล user จาก email ที่รับมา
-        db.query("SELECT * FROM users WHERE email = ?", [email], (err, result) => {
-            // ถ้าเกิด error ให้ส่ง error กลับไป
-            if (err) { errorMessage(res, "Internal Server Error! (MYSQL)"); return }
-            // ถ้าไม่มีข้อมูลให้ส่ง error กลับไป
-            if (!result) { errorMessage(res, "Internal Server Error! (MYSQL)"); return }
-            // ถ้ามีข้อมูลให้ทำการเช็ค password ว่าตรงกับที่เราใส่มาหรือไม่
-            if (Array.isArray(result) && result.length > 0) {
-                const user = result[0] as { id: number, password: string, isVerify: number };
-                // ถ้าใช้ยังไม่ยืนยัน email ให้ส่ง error กลับไป
-                if (user.isVerify == 0) { errorMessage(res, "Plese verify your account"); return }
-                bcrypt.compare(password, user.password, async (err, isLogin) => {
-                    // ถ้าเกิด error ให้ส่ง error กลับไป
-                    if (err) { errorMessage(res, "Internal Server Error! (Bcrypt)"); return }
-                    // ถ้า password ไม่ตรงกับที่เราใส่มา
-                    if (!isLogin) {
-                        try {
-                            // ทำการดึงข้อมูลที่อยู่จาก IP โดยใช้ fetch ในการดึงข้อมูลจากเว็ปอื่นๆเข้ามา
-                            const response = await fetch(`http://ip-api.com/json/${ip_1}`);
-                            const data = await response.json();
-                            // สร้างตัวแปรที่ใช้เก็บค่าข้อมูลที่เราต้องการส่งเข้าไปไว้ใน database
-                            const d = {
-                                country: data.country || 'Unknown',
-                                city: data.city || 'Unknown',
-                                zip: data.zip || 'Unknown',
-                                lat: data.lat || 'Unknown',
-                                lon: data.lon || 'Unknown',
-                                timezone: data.timezone || 'Unknown',
-                                isp: data.isp || 'Unknown',
-                                ip: ip_1,
-                                platform: systemInfo || 'Unknown',
-                                user_id: user.id
-                            }
-                            // ทำการบันทึำข้อมูลลงใน database
-                            db.query("INSERT INTO login_address (country, city, zip, lat, lon, timezone, isp, ip, platform, user_id) VALUES (?,?,?,?,?,?,?,?,?,?)", [
-                                d.country, d.city, d.zip, d.lat, d.lon, d.timezone, d.isp, d.ip, d.platform, d.user_id
-                            ], (err, result) => {
-                                // ถ้าเกิด error ให้ส่ง error กลับไป
-                                if (err) { errorMessage(res, "Internal Server Error! (MYSQL)"); return }
-                                if (!result) { errorMessage(res, "Internal Server Error! (MYSQL)"); return }
-                                // ทำการส่ง error ออกไปเพราะว่าลงชื่อเข้าใช้ไม่สำเร็จ
-                                errorMessage(res, "Invalid email or password!");
-                            })
-                        } catch (error) {
-                            res.status(500).json({ error: error });
-                        }
-                        return
-                        // ถ้า password ตรงกับที่เราใส่มาให้ส่ง token กลับไป
+
+        // ตรวจสอบว่า IP address มีค่าหรือไม่
+        if (!ip_1) {
+            errorMessage(res, 'IP Address not found'); // ถ้าไม่มี IP ให้ส่งข้อความ error
+            return;
+        }
+
+        // ดึงค่า email และ password จาก body ของ request
+        const { email, password } = req.body;
+
+        // ตรวจสอบว่า email หรือ password ไม่มีการส่งมา
+        if (!email) {
+            errorMessage(res, "Please Enter your email!"); // ถ้าไม่มี email ให้แสดงข้อความ error
+            return;
+        }
+
+        if (!password) {
+            errorMessage(res, "Please Enter your password!"); // ถ้าไม่มี password ให้แสดงข้อความ error
+            return;
+        }
+
+        // ตรวจสอบข้อมูลผู้ใช้จากฐานข้อมูล
+        try {
+            const result = await new Promise<RowDataPacket[]>((resolve, reject) => {
+                // query ฐานข้อมูลเพื่อตรวจสอบผู้ใช้จาก email
+                db.query("SELECT * FROM users WHERE email = ?", [email], (err, result) => {
+                    if (err) {
+                        reject("Internal Server Error! (MYSQL)"); // ถ้าเกิดข้อผิดพลาดในการ query ให้ reject
                     } else {
-                        const token = jwt.sign({ email: email, id: user.id }, process.env.JWT_SECRET as string, { expiresIn: '1d' })
-                        res.json({ status: "Success", message: "Login Success!", token })
+                        resolve(result as RowDataPacket[]); // ถ้า query สำเร็จให้ resolve ผลลัพธ์
                     }
-                })
-                // ถ้าไม่มีข้อมูลให้ส่ง error กลับไป
-            } else {
-                errorMessage(res, "Email not found!");
+                });
+            });
+
+            // ถ้าไม่พบข้อมูลผู้ใช้
+            if (!Array.isArray(result) || result.length === 0) {
+                errorMessage(res, "Email not found!"); // ถ้าไม่พบให้แสดง error
+                return;
             }
-        })
+
+            const user = result[0] as { id: number, password: string, isVerify: number };
+
+            // ตรวจสอบว่าผู้ใช้ถูกบล็อก IP หรือไม่
+            const blockCheckResult = await new Promise<RowDataPacket[]>((resolve, reject) => {
+                // query ฐานข้อมูลเพื่อตรวจสอบ IP ที่ถูกบล็อกสำหรับผู้ใช้
+                db.query("SELECT ip FROM block WHERE user_id = ?", [user.id], (err, result) => {
+                    if (err) {
+                        reject("Internal Server Error! (MYSQL)"); // ถ้าเกิดข้อผิดพลาดในการ query ให้ reject
+                    } else {
+                        resolve(result as RowDataPacket[]); // ถ้า query สำเร็จให้ resolve ผลลัพธ์
+                    }
+                });
+            });
+
+            // ตรวจสอบว่ามี IP ที่ตรงกับ IP ของผู้ใช้หรือไม่
+            if (Array.isArray(blockCheckResult) && blockCheckResult.length > 0) {
+                const rows = blockCheckResult as RowDataPacket[];
+                for (const e of rows) {
+                    if (e.ip === ip_1) {
+                        errorMessage(res, "Your IP has been blocked. Please contact your administrator."); // ถ้า IP ตรงให้แสดงข้อความ error
+                        return;
+                    }
+                }
+            }
+
+            // ตรวจสอบว่าผู้ใช้ยังไม่ได้ยืนยันบัญชีหรือไม่
+            if (user.isVerify === 0) {
+                errorMessage(res, "Please verify your account"); // ถ้ายังไม่ยืนยันบัญชีให้แสดงข้อความ error
+                return;
+            }
+
+            // ตรวจสอบความถูกต้องของ password
+            bcrypt.compare(password, user.password, async (err, isLogin) => {
+                if (err) {
+                    errorMessage(res, "Internal Server Error! (Bcrypt)"); // ถ้าเกิดข้อผิดพลาดจาก bcrypt ให้แสดงข้อความ error
+                    return;
+                }
+
+                if (!isLogin) { // ถ้า password ไม่ตรง
+                    try {
+                        // ทำการดึงข้อมูลจาก IP API
+                        const response = await fetch(`http://ip-api.com/json/${ip_1}`);
+                        const data = await response.json();
+                        // สร้างตัวแปรข้อมูลที่จะบันทึก
+                        const d = {
+                            country: data.country || 'Unknown',
+                            city: data.city || 'Unknown',
+                            zip: data.zip || 'Unknown',
+                            lat: data.lat || 'Unknown',
+                            lon: data.lon || 'Unknown',
+                            timezone: data.timezone || 'Unknown',
+                            isp: data.isp || 'Unknown',
+                            ip: ip_1,
+                            platform: systemInfo || 'Unknown',
+                            user_id: user.id,
+                        };
+
+                        // ทำการบันทึกข้อมูลลงในฐานข้อมูล
+                        db.query("INSERT INTO login_address (country, city, zip, lat, lon, timezone, isp, ip, platform, user_id) VALUES (?,?,?,?,?,?,?,?,?,?)", [
+                            d.country, d.city, d.zip, d.lat, d.lon, d.timezone, d.isp, d.ip, d.platform, d.user_id
+                        ], (err, result) => {
+                            if (err) {
+                                errorMessage(res, "Internal Server Error! (MYSQL)"); // ถ้าเกิดข้อผิดพลาดจากฐานข้อมูลให้แสดงข้อความ error
+                                return;
+                            }
+
+                            errorMessage(res, "Invalid email or password!"); // ถ้า login ไม่สำเร็จให้แสดงข้อความ error
+                        });
+                    } catch (error) {
+                        res.status(500).json({ error }); // ถ้าเกิดข้อผิดพลาดจากการดึงข้อมูล IP API ให้แสดงข้อผิดพลาด
+                    }
+                    return;
+                }
+
+                // ถ้ารหัสผ่านถูกต้อง ให้สร้าง JWT token
+                const token = jwt.sign({ email: email, id: user.id }, process.env.JWT_SECRET as string, { expiresIn: '1d' });
+                res.json({ status: "Success", message: "Login Success!", token }); // ส่ง token กลับไป
+            });
+
+        } catch (error) {
+            errorMessage(res, error instanceof Error ? error.message : "Unknown error"); // ถ้าเกิดข้อผิดพลาดในการ query ให้ส่งข้อความ error
+        }
     }
-}
+};
 
 export default login;

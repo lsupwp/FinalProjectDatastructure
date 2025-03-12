@@ -23,7 +23,7 @@ export default function register(req:NextApiRequest, res:NextApiResponse){
         // เช็คว่า password ตรงกับ confirm password หรือไม่ถ้าไม่ให้ทำการ response error กลับไป
         if(password !== confirm_password) {errorMessage(res, "Password and Confirm Password not match!"); return}
         // ถ้าทุกอว่า ok ใทำการค้นหาข้อมูลว่ามี email นี้ในระบบหรือไม่
-        db.query("SELECT * FROM users WHERE email = ?", [email], (err, result)=>{
+        db.query("SELECT * FROM users WHERE email = ?", [email], async (err, result)=>{
             // ถ้าเกิด error ให้ส่ง response error กลับไป
             if(err) {errorMessage(res, "Internal Server Error! (MYSQL)"); return}
             if(!result) {errorMessage(res, "Internal Server Error! (MYSQL)"); return}
@@ -33,7 +33,8 @@ export default function register(req:NextApiRequest, res:NextApiResponse){
                 errorMessage(res, "Email already exists!")
             // ถ้าไม่มีให้ทำการเข้ารหัส password
             }else{
-                bcrypt.hash(password, 10, (err, hash)=>{
+                const salt = await bcrypt.genSalt()
+                bcrypt.hash(password, salt, (err, hash)=>{
                     // ถ้าเกิดข้อผิดพลาดขึ้นจะทำการ response error กลับไป
                     if(err) {errorMessage(res, "Internal Server Error (hashing password Error)!"); return}
                     if(!hash) {errorMessage(res, "Internal Server Error (hash data not found)!"); return}
@@ -48,7 +49,7 @@ export default function register(req:NextApiRequest, res:NextApiResponse){
                                 // ถ้าเกิดข้อผิดพลาดขึ้นจะทำการ response error กลับไป
                                 if(err) {errorMessage(res, "Internal Server Error! (MYSQL)"); return}
                                 if(!result) {errorMessage(res, "Internal Server Error! (MYSQL)"); return}
-                                // ทำการส่ง email สำหรับให้ผู้ใช้กด verify email
+                                // ทำการส่ง email สำหรับให้ผู้ใช้กด verify 
                                 sendMail(email, "Verify your account", `Please click this link to verify your account: <a href"${process.env.BASE_URL+'/register/verify/'+token}">Verify</a> <br> This link will expire in 24 hours! <br> or you can copy this link and paste it in your browser: ${process.env.BASE_URL+'/register/verify/'+token}`)
                                 res.json({status: "Success", message: "Register Success! Plese check your email to verify your account!"})
                                 return

@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test":"next dev -H 0.0.0.0 -p 3000"
+    "test": "next dev -H 0.0.0.0 -p 3000"
   },
   "dependencies": {
     "axios": "^1.8.2",
@@ -29,6 +29,7 @@
     "@types/nodemailer": "^6.4.17",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "daisyui": "^5.0.3",
     "eslint": "^9",
     "eslint-config-next": "15.2.1",
     "tailwindcss": "^4",
