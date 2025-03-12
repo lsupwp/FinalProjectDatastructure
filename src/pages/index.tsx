@@ -40,7 +40,7 @@ export default function Home() {
                 <a href="#item4" className="btn btn-xs">4</a>
             </div>
 
-            <div className="grid grid-cols-3 gap-10 sm:grid-cols-1 mt-10">
+            <div className="grid grid-cols-3 gap-10 mt-10">
                 <div className="card bg-base-100 w-96 shadow-sm">
                     <figure>
                         <img
